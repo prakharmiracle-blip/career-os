@@ -7,9 +7,10 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     region: singapore
-    plan: starter
+    # plan omitted: Render's default for a new web service is the smallest always-on
+    # instance (0.5c-512mb). Use plan: free only for throwaway tests; it sleeps when idle.
     healthCheckPath: /api/health
-    autoDeploy: true
+    autoDeployTrigger: commit
     envVars:
       - key: ENVIRONMENT
         value: production
