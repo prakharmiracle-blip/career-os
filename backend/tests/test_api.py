@@ -167,3 +167,33 @@ def test_exact_target_role_ranks_above_related_titles(client):
     client.patch("/api/me", json={"target_role": "Data Analyst", "location": "Pune, India", "skills": ["SQL", "Excel", "Power BI"], "onboarded": True})
     rec = client.get("/api/jobs/recommended", params={"limit": 3}).json()
     assert rec[0]["title"].startswith("Data Analyst")
+
+
+def test_proxy_secret_blocks_direct_calls_and_keys_rate_limit_by_client(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+    from app.main import app
+    from app.ratelimit import client_ip
+
+    monkeypatch.setattr(get_settings(), "proxy_secret", "s3cret")
+    with TestClient(app) as c:
+        assert c.get("/api/jobs").status_code == 403
+        assert c.get("/api/health").status_code == 200
+        assert c.get("/api/jobs", headers={"x-careeros-proxy": "wrong"}).status_code == 403
+        assert c.get("/api/jobs", headers={"x-careeros-proxy": "s3cret"}).status_code == 200
+
+    class Req:
+        def __init__(self, headers):
+            self.headers = headers
+            self.client = type("C", (), {"host": "10.0.0.1"})()
+
+    assert client_ip(Req({"x-careeros-proxy": "s3cret", "x-forwarded-for": "1.2.3.4, 10.0.0.9"})) == "1.2.3.4"
+    assert client_ip(Req({"x-forwarded-for": "1.2.3.4"})) == "10.0.0.1"  # spoofed header ignored
+
+
+def test_database_url_normalised():
+    from app.config import Settings
+
+    assert Settings(database_url="postgres://u:p@h/db").database_url == "postgresql+psycopg://u:p@h/db"
+    assert Settings(database_url="postgresql://u:p@h/db?sslmode=require").database_url.startswith("postgresql+psycopg://")

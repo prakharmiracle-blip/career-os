@@ -42,7 +42,7 @@ The web app proxies `/api/*` to the API (see `next.config.mjs`), so auth cookies
 ### Tests and checks
 
 ```bash
-cd backend && pytest -q                       # 19 API tests against careeros_test
+cd backend && pytest -q                       # 21 API tests against careeros_test
 cd frontend && npm run typecheck && npm run lint && npm run build
 ```
 
@@ -79,9 +79,16 @@ Transparent rules in `backend/app/services/matching.py`, max 100: skills overlap
 | 5 | Networking, Mentoring (Jitsi/Daily video), Find a Similar Person |
 | 6 | Freelancing board (manual payments only) |
 
+## Deploying
+
+Recommended setup: web on Vercel, API on Render (Docker, `render.yaml`), Postgres on Neon. Full step-by-step guide is in the deployment doc shared alongside this repo.
+
+The API refuses to start in production without a 32+ character `JWT_SECRET` and a 24+ character `PROXY_SECRET`. `PROXY_SECRET` must be identical on the web app: the Next.js middleware (`frontend/src/middleware.ts`) attaches it to every `/api/*` call, and the API rejects requests without it, so the public API URL can't be used to bypass the app or spoof client IPs.
+
+`backend/scripts/start.sh` runs `alembic upgrade head` on every boot. `python -m app.seed` skips the demo account when `ENVIRONMENT=production` (use `--with-demo` on a staging server).
+
 ## Notes for production
 
-- Set `ENVIRONMENT=production`, a 32+ character `JWT_SECRET` (the API refuses to start otherwise) and `COOKIE_SECURE=true` behind HTTPS.
-- Rate limiting uses in-memory storage; for more than one API instance pass a Redis `storage_uri` in `backend/app/ratelimit.py`.
+- Rate limiting uses in-memory storage, so run one API instance (`WEB_CONCURRENCY=1`). For more, pass a Redis `storage_uri` in `backend/app/ratelimit.py`.
 - Company logos are coloured monograms. Real logos are trademarks; source licensed ones from your job data provider.
 - The hero uses an SVG illustration in place of the reference photo. Swap in a licensed image in `frontend/src/components/hero-banner.tsx`.

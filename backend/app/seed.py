@@ -1,7 +1,9 @@
 """Seed script: 40 companies, 200 realistic Indian-market jobs, and a demo user.
 
-Run:  python -m app.seed            (idempotent: skips if jobs already exist)
-      python -m app.seed --reset    (wipes seed data and re-creates it)
+Run:  python -m app.seed               (idempotent: skips if jobs already exist)
+      python -m app.seed --reset       (wipes seed data and re-creates it)
+      python -m app.seed --no-demo     (jobs only, no demo login; default when ENVIRONMENT=production)
+      python -m app.seed --with-demo   (force the demo user, e.g. on a staging server)
 
 Deterministic (fixed random seed) so tests and screenshots are stable.
 """
@@ -177,7 +179,7 @@ def generate_jobs():
     return out
 
 
-def seed(db: Session, reset: bool = False) -> None:
+def seed(db: Session, reset: bool = False, demo: bool = True) -> None:
     if reset:
         for model in (Activity, Application, SavedJob, Job):
             db.execute(delete(model))
@@ -210,9 +212,10 @@ def seed(db: Session, reset: bool = False) -> None:
         jobs.append(j)
     db.flush()
 
-    _seed_demo_user(db, jobs)
+    if demo:
+        _seed_demo_user(db, jobs)
     db.commit()
-    print(f"Seeded {len(companies)} companies, {len(jobs)} jobs and demo user {DEMO_EMAIL} / {DEMO_PASSWORD}")
+    print(f"Seeded {len(companies)} companies and {len(jobs)} jobs" + (f", plus demo user {DEMO_EMAIL} / {DEMO_PASSWORD}" if demo else " (no demo user)"))
 
 
 def _seed_demo_user(db: Session, jobs: list[Job]) -> None:
@@ -251,5 +254,13 @@ def _seed_demo_user(db: Session, jobs: list[Job]) -> None:
 
 
 if __name__ == "__main__":
+    from app.config import get_settings
+
+    # A demo account with a published password must never appear in production by accident.
+    demo = get_settings().environment == "development"
+    if "--with-demo" in sys.argv:
+        demo = True
+    if "--no-demo" in sys.argv:
+        demo = False
     with SessionLocal() as session:
-        seed(session, reset="--reset" in sys.argv)
+        seed(session, reset="--reset" in sys.argv, demo=demo)
