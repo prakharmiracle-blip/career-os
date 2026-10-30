@@ -5,7 +5,7 @@ import { Check, ChevronDown, Loader2, Search, SlidersHorizontal, X } from "lucid
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
-import { JobRow } from "@/components/job-card";
+import { AdzunaCredit, JobRow } from "@/components/job-card";
 import { useJobSearch, type SearchParams } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -238,6 +238,7 @@ function JobSearch() {
           </div>
         )}
         {!hasNextPage && jobs.length > 0 && <p className="py-4 text-center text-sm text-ink-muted">You&apos;ve seen all {total} jobs.</p>}
+        {jobs.some((j) => j.source === "adzuna") && <AdzunaCredit className="pb-4 text-center" />}
       </div>
     </div>
   );

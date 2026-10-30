@@ -30,6 +30,27 @@ class SignupIn(BaseModel):
         return v
 
 
+def _strong(v: str) -> str:
+    if not any(c.isdigit() for c in v) or not any(c.isalpha() for c in v):
+        raise ValueError("Password must contain at least one letter and one number")
+    return v
+
+
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+
+class ResetIn(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def strong_enough(cls, v: str) -> str:
+        return _strong(v)
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
@@ -53,6 +74,7 @@ class UserOut(BaseModel):
 
 class ProfileUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
+    role_type: RoleType | None = None
     headline: str | None = Field(default=None, max_length=120)
     target_role: str | None = Field(default=None, max_length=120)
     location: str | None = Field(default=None, max_length=120)
@@ -86,13 +108,16 @@ class JobOut(BaseModel):
     location: str
     work_mode: str
     job_type: str
-    salary_min_lpa: int
-    salary_max_lpa: int
-    exp_min: int
-    exp_max: int
+    salary_min_lpa: int | None
+    salary_max_lpa: int | None
+    salary_estimated: bool = False
+    exp_min: int | None
+    exp_max: int | None
     skills: list[str]
     posted_at: datetime
     source: str
+    apply_url: str | None = None
+    active: bool = True
     saved: bool = False
     applied: bool = False
     match: MatchOut | None = None
@@ -173,3 +198,13 @@ class ResumeOut(BaseModel):
     word_count: int
     uploaded_at: datetime
     user: UserOut
+    analysis: dict | None = None
+    ai_enabled: bool = False
+    ai_note: str | None = None
+
+
+class ResumeSummary(BaseModel):
+    filename: str
+    detected_skills: list[str]
+    uploaded_at: datetime
+    analysis: dict | None

@@ -8,8 +8,10 @@ from app.db import get_db
 from app.deps import get_current_user
 from app.models import Activity, Application, ApplicationStatus, Resume, SavedJob, User, utcnow
 from app.ratelimit import limiter
-from app.schemas import ActivityOut, OverviewOut, ProfileUpdate, ResumeOut, UserOut
+from app.schemas import ActivityOut, OverviewOut, ProfileUpdate, ResumeOut, ResumeSummary, UserOut
+from app.services import llm
 from app.services.resume import MAX_BYTES, ResumeError, detect_skills, extract_text
+from app.services.resume_ai import analyze
 
 router = APIRouter(prefix="/api/me", tags=["me"])
 
@@ -73,6 +75,18 @@ async def upload_resume(
         raise HTTPException(422, str(e)) from e
 
     detected = detect_skills(text)
+    analysis = None
+    ai_note = None
+    if llm.enabled():
+        try:
+            analysis = analyze(db, user.id, text, user.target_role)
+            for sk in analysis.skills:  # AI finds skills outside our keyword list too
+                if sk.lower() not in {d.lower() for d in detected}:
+                    detected.append(sk)
+        except llm.AIQuotaExceeded as e:
+            ai_note = str(e)
+        except llm.AIError as e:
+            ai_note = f"AI review didn't run ({e}) Your skills were still read from the file."
     have = {s.lower() for s in user.skills or []}
     added = [s for s in detected if s.lower() not in have]
     if added:
@@ -82,8 +96,10 @@ async def upload_resume(
     name = (file.filename or "resume")[:255]
     if resume:
         resume.filename, resume.text, resume.detected_skills, resume.uploaded_at = name, text, detected, utcnow()
+        resume.analysis = analysis.model_dump() if analysis else None
     else:
-        resume = Resume(user_id=user.id, filename=name, text=text, detected_skills=detected)
+        resume = Resume(user_id=user.id, filename=name, text=text, detected_skills=detected,
+                        analysis=analysis.model_dump() if analysis else None)
         db.add(resume)
     db.commit()
     db.refresh(user)
@@ -95,4 +111,21 @@ async def upload_resume(
         word_count=len(text.split()),
         uploaded_at=resume.uploaded_at,
         user=UserOut.model_validate(user),
+        analysis=analysis.model_dump() if analysis else None,
+        ai_enabled=llm.enabled(),
+        ai_note=ai_note,
     )
+
+
+@router.get("/resume", response_model=ResumeSummary | None)
+def latest_resume(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    r = db.scalar(select(Resume).where(Resume.user_id == user.id))
+    if not r:
+        return None
+    return ResumeSummary(filename=r.filename, detected_skills=r.detected_skills, uploaded_at=r.uploaded_at, analysis=r.analysis)
+
+
+@router.get("/ai")
+def ai_status(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Whether AI features are on, and how much of today's allowance this user has used."""
+    return {"enabled": llm.enabled(), **llm.usage_today(db, user.id)}

@@ -28,3 +28,23 @@ services:
         value: 10/minute
       - key: WEB_CONCURRENCY
         value: "1"
+      # Real jobs (free key: developer.adzuna.com). Empty = sample jobs only.
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false
+      # AI resume review + Career Coach (console.anthropic.com). Empty = AI off.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_DAILY_LIMIT
+        value: "40"
+      # Password reset by email code (resend.com). Empty = reset by email is off.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # Google sign-in (console.cloud.google.com). Empty = button shows "coming soon".
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false

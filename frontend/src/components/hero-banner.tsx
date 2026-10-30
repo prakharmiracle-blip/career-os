@@ -1,10 +1,11 @@
 import { ArrowRight, BarChart3, BriefcaseBusiness, FileText, Mic } from "lucide-react";
 import Link from "next/link";
+import { INTERVIEW_APP_URL, isExternal } from "@/lib/nav";
 
 const CHIPS = [
   { label: "Resume", icon: FileText, href: "/resume-builder", pos: "left-[6%] top-[22%]" },
   { label: "Jobs", icon: BriefcaseBusiness, href: "/jobs", pos: "right-[4%] top-[24%]" },
-  { label: "Interview Prep", icon: Mic, href: "/interview-prep", pos: "left-0 top-[56%]" },
+  { label: "Interview Prep", icon: Mic, href: INTERVIEW_APP_URL, pos: "left-0 top-[56%]" },
   { label: "Skill Growth", icon: BarChart3, href: "/skills", pos: "right-0 top-[62%]" },
 ];
 
@@ -70,6 +71,7 @@ export function HeroBanner() {
             <Link
               key={label}
               href={href}
+              {...(isExternal(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               className={`absolute ${pos} flex items-center gap-2.5 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2.5 text-sm font-semibold backdrop-blur-md hover:bg-white/20`}
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-azure/90">

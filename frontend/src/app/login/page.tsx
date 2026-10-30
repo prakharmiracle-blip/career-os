@@ -31,7 +31,7 @@ function LoginForm() {
   const qc = useQueryClient();
   const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [forgot, setForgot] = useState(false);
+  const oauthError = useSearchParams().get("error");
   const { register, handleSubmit, formState } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "", remember: true },
@@ -56,6 +56,11 @@ function LoginForm() {
         <p className="mt-1.5 text-sm text-ink-soft">Log in to continue your job search.</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-4" noValidate>
+          {!error && oauthError && (
+            <div role="alert" className="rounded-xl bg-status-red px-4 py-3 text-sm font-medium text-status-redInk">
+              {oauthError === "google_off" ? "Google sign-in isn't switched on yet. Use your email and password." : "Google sign-in didn't finish. Try again, or use your email and password."}
+            </div>
+          )}
           {error && (
             <div role="alert" className="rounded-xl bg-status-red px-4 py-3 text-sm font-medium text-status-redInk">
               {error}
@@ -69,9 +74,9 @@ function LoginForm() {
           <div>
             <div className="flex items-center justify-between">
               <label htmlFor="password" className="label">Password</label>
-              <button type="button" onClick={() => setForgot(true)} className="mb-1.5 text-xs font-semibold text-azure-ink hover:underline">
+              <Link href="/forgot-password" className="mb-1.5 text-xs font-semibold text-azure-ink hover:underline">
                 Forgot password?
-              </button>
+              </Link>
             </div>
             <div className="relative">
               <input
@@ -88,11 +93,6 @@ function LoginForm() {
               </button>
             </div>
             <FieldError id="password-err" msg={errors.password?.message} />
-            {forgot && (
-              <p className="mt-2 rounded-lg bg-canvas px-3 py-2 text-xs text-ink-soft" role="status">
-                Password reset by email code is coming soon. Until then, contact support to reset your password.
-              </p>
-            )}
           </div>
           <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input type="checkbox" className="h-4 w-4 rounded accent-violet" {...register("remember")} /> Remember me
@@ -105,7 +105,7 @@ function LoginForm() {
         <div className="my-5 flex items-center gap-3 text-xs text-ink-muted">
           <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
         </div>
-        <GoogleButton />
+        <GoogleButton next={next} />
         <p className="mt-6 text-center text-sm text-ink-soft">
           New to CareerOS?{" "}
           <Link href="/signup" className="font-semibold text-azure-ink hover:underline">

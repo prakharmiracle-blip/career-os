@@ -7,7 +7,10 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { PremiumDialog } from "@/components/premium-dialog";
+import { ResumeInsights, type ResumeAnalysis } from "@/components/resume-insights";
 import { ResumeUpload } from "@/components/resume-upload";
+import { api } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { SkillsInput } from "@/components/skills-input";
 import { Button } from "@/components/ui/button";
 import { useMe, useUpdateProfile } from "@/lib/queries";
@@ -25,6 +28,11 @@ export default function SettingsPage() {
   const { data: user } = useMe();
   const update = useUpdateProfile();
   const [premium, setPremium] = useState(false);
+  const latest = useQuery({
+    queryKey: ["resume"],
+    queryFn: () =>
+      api<{ filename: string; uploaded_at: string; detected_skills: string[]; analysis: ResumeAnalysis | null } | null>("/api/me/resume"),
+  });
   const { register, handleSubmit, control, formState } = useForm<Form>({
     resolver: zodResolver(schema),
     values: user
@@ -90,6 +98,15 @@ export default function SettingsPage() {
           Resume
         </h2>
         <p className="mb-4 mt-1 text-sm text-ink-soft">Upload a new version any time. New skills it mentions are added to your profile.</p>
+        {latest.data && (
+          <div className="mb-4">
+            <p className="mb-2 text-sm text-ink-soft">
+              Current: <span className="font-medium text-ink">{latest.data.filename}</span>, uploaded{" "}
+              {new Date(latest.data.uploaded_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            </p>
+            {latest.data.analysis && <ResumeInsights analysis={latest.data.analysis} />}
+          </div>
+        )}
         <ResumeUpload compact />
       </section>
 
@@ -112,7 +129,7 @@ export default function SettingsPage() {
         </h2>
         <p className="mt-1 text-sm text-ink-muted">Signed in as {user.email}</p>
         <ul className="mt-4 divide-y divide-line text-sm">
-          {["Resume version history", "Notification preferences", "Privacy controls", "Delete account"].map((t) => (
+          {["Notification preferences", "Privacy controls", "Delete account"].map((t) => (
             <li key={t} className="flex items-center justify-between py-3">
               <span className="text-ink">{t}</span>
               <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-ink-muted">Coming soon</span>

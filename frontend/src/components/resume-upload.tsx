@@ -5,6 +5,7 @@ import { Check, FileText, Loader2, RotateCcw, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { MatchBadge } from "@/components/job-card";
+import { ResumeInsights, type ResumeAnalysis } from "@/components/resume-insights";
 import { api, type Job, type User } from "@/lib/api";
 import { keys } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,9 @@ export interface ResumeResult {
   word_count: number;
   uploaded_at: string;
   user: User;
+  analysis: ResumeAnalysis | null;
+  ai_enabled: boolean;
+  ai_note: string | null;
 }
 
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -69,6 +73,7 @@ export function ResumeUpload({
       const r = await atLeast(upload, 1600);
       clearTimeout(toAnalyzing);
       qc.setQueryData(keys.me, r.user);
+      qc.invalidateQueries({ queryKey: ["resume"] });
 
       setStage(2);
       const jobs = await atLeast(api<Job[]>("/api/jobs/recommended?limit=3"), 900);
@@ -145,6 +150,12 @@ export function ResumeUpload({
             })}
           </ul>
         )}
+        {r.analysis && (
+          <div className="mt-5">
+            <ResumeInsights analysis={r.analysis} />
+          </div>
+        )}
+        {r.ai_note && <p className="mt-3 rounded-lg bg-status-amber px-3 py-2 text-xs text-status-amberInk">{r.ai_note}</p>}
         {!compact && jobs.length > 0 && (
           <>
             <p className="mt-5 text-sm font-semibold text-ink">Your top matches</p>

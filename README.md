@@ -2,7 +2,7 @@
 
 AI career platform: job search with explainable matching, application tracking, and (in later phases) resume building, coaching, interview prep and community features.
 
-**Status: Phase 1 of 6.** See [What's in Phase 1](#whats-in-phase-1) and [Roadmap](#roadmap).
+**Status: Phase 2 complete.** Real jobs (Adzuna) are built but switched off: the app runs on sample jobs until the Adzuna keys are added. See [What's in Phase 1](#whats-in-phase-1) and [Roadmap](#roadmap).
 
 ```
 careeros/
@@ -42,7 +42,7 @@ The web app proxies `/api/*` to the API (see `next.config.mjs`), so auth cookies
 ### Tests and checks
 
 ```bash
-cd backend && pip install -r requirements-dev.txt && pytest -q   # 31 API tests against careeros_test
+cd backend && pip install -r requirements-dev.txt && pytest -q   # 81 API tests against careeros_test
 cd frontend && npm run typecheck && npm run lint && npm run build
 ```
 
@@ -69,11 +69,27 @@ Every sidebar module not yet built opens a clearly marked "Coming soon" page nam
 
 Transparent rules in `backend/app/services/matching.py`, max 100: skills overlap 45, experience fit 20, location/remote 10, target-role title 25. Each job returns its score, matched skills, missing skills and plain-language reasons. Phase 2 layers embeddings and LLM explanations on top; these rules remain the fallback.
 
+## Phase 2 (shipped so far)
+
+| Feature | Needs | Without the key |
+|---|---|---|
+| Real jobs from Adzuna, refreshed every 24h in the background (`app/services/ingest.py`); sample jobs are hidden once 50+ real jobs exist; postings not seen for 7 days are retired; Apply opens the employer's posting and adds it to the tracker | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | Sample jobs, labelled as samples |
+| AI resume review on upload: ATS score, top fixes, rewritten bullets, extra skills (Claude Haiku 5.5, strict tool output validated with Pydantic) | `ANTHROPIC_API_KEY` | Keyword skill detection only |
+| AI Career Coach (`/coach`) with saved chats, grounded in the user's profile, resume review, applications and best-matching jobs (Claude Sonnet 5.5); assistant box on Applications | `ANTHROPIC_API_KEY` | "Switching on soon" state |
+| Interview Prep opens Miracle Interview AI (https://miracleinterviewai.netlify.app/) in a new tab | none | |
+| Resume Builder (`/resume-builder`): up to 10 saved resumes, 3 single-column ATS-friendly templates, live preview, 10-check ATS score with keyword gaps against open jobs for the target role, PDF and Word download | none | Fully works |
+| Resume Builder AI: fill from uploaded resume, rewrite a bullet (never invents numbers; writes [add number]) | `ANTHROPIC_API_KEY` | Buttons hidden |
+| Forgot password: 6-digit email code, 10-minute expiry, 5 tries, 3 codes/hour, signs out other sessions | `RESEND_API_KEY`, `EMAIL_FROM` | "Isn't set up yet" message |
+| Google sign-in: OAuth code flow with PKCE and state; links to an existing account by verified email | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Button says "coming soon" |
+| Landing page at `/` with features (unbuilt ones marked Coming soon), how it works, plans with waitlist, FAQ | none | |
+
+AI cost control: every call is counted in `ai_usage` per user per day and capped by `AI_DAILY_LIMIT` (default 40). Force a job refresh with `python -m app.ingest`; check status at `/api/jobs/sources`.
+
 ## Roadmap
 
 | Phase | Scope |
 |---|---|
-| 2 | Claude service layer (Pydantic-validated JSON), resume upload + parsing in onboarding, Resume Builder (templates, ATS score, rewrites, PDF/DOCX), AI Career Coach + Applications assistant, Google sign-in, email OTP reset (Resend), landing page, S3/Supabase storage, Adzuna/JSearch ingest |
+| 2 (remaining) | Switch on real jobs (after discussion), file storage for uploaded resumes |
 | 3 | Interview Prep (text/voice mock interviews), Skill Development roadmap, Company Insights, reminders + status history, WebSocket notifications |
 | 4 | Upgrade Skill assessments + badges, Prime Skills tracks + verifiable certificates, plan gating (no payments) |
 | 5 | Networking, Mentoring (Jitsi/Daily video), Find a Similar Person |

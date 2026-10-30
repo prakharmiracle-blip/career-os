@@ -1,14 +1,14 @@
 "use client";
 
-import { ArrowLeft, Bookmark, BriefcaseBusiness, CheckCircle2, CircleAlert, IndianRupee, Send, Sparkles, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Bookmark, BriefcaseBusiness, CheckCircle2, CircleAlert, IndianRupee, Send, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { CompanyLogo } from "@/components/company-logo";
-import { JobRow, MatchBadge } from "@/components/job-card";
+import { AdzunaCredit, JobRow, MatchBadge } from "@/components/job-card";
 import { Button } from "@/components/ui/button";
 import { useApply, useJob, useSimilar, useToggleSave } from "@/lib/queries";
-import { experience, salary, timeAgo } from "@/lib/utils";
+import { experience, placeLine, salary, timeAgo } from "@/lib/utils";
 
 export default function JobDetailPage() {
   const id = Number(useParams<{ id: string }>().id);
@@ -30,8 +30,12 @@ export default function JobDetailPage() {
     );
 
   const tiles = [
-    { icon: IndianRupee, value: salary(job.salary_min_lpa, job.salary_max_lpa), label: "Salary (Estimated)" },
-    { icon: BriefcaseBusiness, value: job.job_type, label: "Employment Type" },
+    {
+      icon: IndianRupee,
+      value: salary(job.salary_min_lpa, job.salary_max_lpa) ?? "Not disclosed",
+      label: job.salary_estimated ? "Salary (Adzuna estimate)" : job.source === "seed" ? "Salary (Estimated)" : "Salary",
+    },
+    { icon: BriefcaseBusiness, value: job.job_type || "Not specified", label: "Employment Type" },
     { icon: UserRound, value: experience(job.exp_min, job.exp_max), label: "Experience" },
   ];
 
@@ -48,18 +52,33 @@ export default function JobDetailPage() {
               <p className="text-[15px] font-semibold text-ink">{job.company.name}</p>
               <h1 className="mt-0.5 text-xl font-bold leading-snug text-ink sm:text-2xl">{job.title}</h1>
               <p className="mt-1 text-sm text-ink-soft">
-                {job.location} <span aria-hidden>•</span> {job.work_mode} <span aria-hidden>•</span> Posted {timeAgo(job.posted_at)}
+                {placeLine(job.location, job.work_mode)} <span aria-hidden>•</span> Posted {timeAgo(job.posted_at)}
               </p>
             </div>
           </header>
 
+          {!job.active && (
+            <p className="mt-5 rounded-xl bg-status-amber px-4 py-3 text-sm font-medium text-status-amberInk">
+              This posting is no longer listed, so it has probably been filled. Your saved copy and tracker entry stay here.
+            </p>
+          )}
           <div className="mt-6 flex flex-wrap gap-3">
-            {job.applied ? (
+            {job.apply_url && job.active ? (
+              <a
+                href={job.apply_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => !job.applied && apply.mutate(job.id)}
+                className="inline-flex h-10 min-w-[160px] items-center justify-center gap-2 rounded-lg bg-azure px-5 text-sm font-semibold text-white hover:bg-azure-ink"
+              >
+                Apply on employer site <ArrowUpRight className="h-4 w-4" />
+              </a>
+            ) : job.applied ? (
               <span className="inline-flex h-10 items-center gap-2 rounded-lg bg-status-green px-5 text-sm font-semibold text-status-greenInk">
                 <CheckCircle2 className="h-4 w-4" /> Applied
               </span>
             ) : (
-              <Button variant="solid" className="min-w-[160px]" loading={apply.isPending} onClick={() => apply.mutate(job.id)}>
+              <Button variant="solid" className="min-w-[160px]" loading={apply.isPending} onClick={() => apply.mutate(job.id)} disabled={!job.active}>
                 <Send className="h-4 w-4" /> Apply Now
               </Button>
             )}
@@ -67,12 +86,15 @@ export default function JobDetailPage() {
               <Bookmark className="h-4 w-4" fill={job.saved ? "currentColor" : "none"} /> {job.saved ? "Saved" : "Save Job"}
             </Button>
           </div>
+          {job.apply_url && job.applied && (
+            <p className="mt-2 text-sm text-ink-soft">In your tracker as Applied. Update its status in Applications once you hear back.</p>
+          )}
           {apply.isError && (
             <p className="mt-2 text-sm text-status-redInk" role="alert">
               {apply.error.message}
             </p>
           )}
-          {apply.isSuccess && (
+          {apply.isSuccess && !job.apply_url && (
             <p className="mt-2 text-sm text-status-greenInk" role="status">
               Application added to your tracker.{" "}
               <Link href="/applications" className="font-semibold underline">
@@ -97,6 +119,7 @@ export default function JobDetailPage() {
             <h2 className="text-base font-bold text-ink">Job Description</h2>
             <p className="mt-2 max-w-[72ch] text-[15px] leading-relaxed text-ink-soft">{job.description}</p>
           </section>
+          {job.responsibilities.length > 0 && (
           <section className="mt-6">
             <h2 className="text-base font-bold text-ink">Key Responsibilities</h2>
             <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[15px] text-ink-soft marker:text-violet">
@@ -105,6 +128,8 @@ export default function JobDetailPage() {
               ))}
             </ul>
           </section>
+          )}
+          {job.skills.length > 0 && (
           <section className="mt-6">
             <h2 className="text-base font-bold text-ink">Skills</h2>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -115,6 +140,15 @@ export default function JobDetailPage() {
               ))}
             </div>
           </section>
+          )}
+          {job.source === "adzuna" ? (
+            <div className="mt-7 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
+              <p className="text-xs text-ink-muted">This is a summary. The full description is on the employer&apos;s posting.</p>
+              <AdzunaCredit />
+            </div>
+          ) : job.source === "seed" ? (
+            <p className="mt-7 border-t border-line pt-4 text-xs text-ink-muted">Sample listing for the beta. Not a real opening.</p>
+          ) : null}
         </article>
       </div>
 
@@ -159,9 +193,9 @@ export default function JobDetailPage() {
               href="/resume-builder"
               className="mt-5 flex h-10 items-center justify-center gap-2 rounded-full border border-violet/30 text-sm font-semibold text-violet-ink hover:bg-violet-soft"
             >
-              <Sparkles className="h-4 w-4" /> Tailor my resume for this job
+              <Sparkles className="h-4 w-4" /> Improve my resume for this job
             </Link>
-            <p className="mt-2 text-center text-xs text-ink-muted">AI resume tailoring arrives with the Resume Builder in Phase 2.</p>
+            <p className="mt-2 text-center text-xs text-ink-muted">Check your resume&apos;s keywords against jobs like this one in the Resume Builder.</p>
           </section>
         )}
         {similar.data && similar.data.length > 0 && (

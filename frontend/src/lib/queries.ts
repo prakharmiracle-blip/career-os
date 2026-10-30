@@ -142,7 +142,7 @@ export function useUpdateApplication() {
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<Pick<User, "name" | "headline" | "target_role" | "location" | "skills" | "onboarded">>) =>
+    mutationFn: (body: Partial<Pick<User, "name" | "headline" | "target_role" | "location" | "skills" | "onboarded" | "role_type">>) =>
       api<User>("/api/me", { method: "PATCH", json: body }),
     onSuccess: (user) => {
       qc.setQueryData(keys.me, user);
@@ -155,5 +155,68 @@ export function useJoinWaitlist() {
   return useMutation({
     mutationFn: (body: { plan: "premium" | "prime"; email?: string; source?: string }) =>
       api<{ ok: boolean; already_joined: boolean; plan: string }>("/api/waitlist", { method: "POST", json: body }),
+  });
+}
+
+// ---------- AI ----------
+export interface AiStatus {
+  enabled: boolean;
+  used: number;
+  limit: number;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export function useAiStatus() {
+  return useQuery({ queryKey: ["ai"], queryFn: () => api<AiStatus>("/api/me/ai"), staleTime: 60_000 });
+}
+
+export function useConversations() {
+  return useQuery({ queryKey: ["coach", "list"], queryFn: () => api<Conversation[]>("/api/coach/conversations") });
+}
+
+export function useConversation(id: string | null) {
+  return useQuery({
+    queryKey: ["coach", "thread", id],
+    queryFn: () => api<{ conversation: Conversation; messages: ChatMessage[] }>(`/api/coach/conversations/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useAsk() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { content: string; conversation_id?: string | null }) =>
+      api<{ conversation: Conversation; user_message: ChatMessage; reply: ChatMessage }>("/api/coach/ask", {
+        method: "POST",
+        json: { content: body.content, conversation_id: body.conversation_id ?? null },
+      }),
+    onSuccess: (r) => {
+      qc.setQueryData<{ conversation: Conversation; messages: ChatMessage[] }>(["coach", "thread", r.conversation.id], (old) => ({
+        conversation: r.conversation,
+        messages: [...(old?.messages ?? []), r.user_message, r.reply],
+      }));
+      qc.invalidateQueries({ queryKey: ["coach", "list"] });
+      qc.invalidateQueries({ queryKey: ["ai"] });
+    },
+  });
+}
+
+export function useDeleteConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/api/coach/conversations/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["coach", "list"] }),
   });
 }

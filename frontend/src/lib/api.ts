@@ -91,13 +91,17 @@ export interface Job {
   location: string;
   work_mode: string;
   job_type: string;
-  salary_min_lpa: number;
-  salary_max_lpa: number;
-  exp_min: number;
-  exp_max: number;
+  salary_min_lpa: number | null;
+  salary_max_lpa: number | null;
+  salary_estimated: boolean;
+  exp_min: number | null;
+  exp_max: number | null;
   skills: string[];
   posted_at: string;
   source: string;
+  /** Employer's posting (real jobs). Null for sample jobs. */
+  apply_url: string | null;
+  active: boolean;
   saved: boolean;
   applied: boolean;
   match: Match | null;

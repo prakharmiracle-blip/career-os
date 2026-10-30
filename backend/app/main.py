@@ -8,7 +8,7 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.db import engine
 from app.ratelimit import from_trusted_proxy, limiter
-from app.routers import applications, auth, jobs, me, waitlist
+from app.routers import applications, auth, coach, jobs, me, resumes, waitlist
 
 settings = get_settings()
 
@@ -47,8 +47,16 @@ async def require_proxy(request: Request, call_next):
     return await call_next(request)
 
 
-for r in (auth.router, jobs.router, applications.router, me.router, waitlist.router):
+for r in (auth.router, jobs.router, applications.router, me.router, waitlist.router, coach.router, resumes.router):
     app.include_router(r)
+
+
+@app.on_event("startup")
+def start_job_refresh():
+    if settings.job_refresh_enabled:
+        from app.services.ingest import start_scheduler
+
+        start_scheduler()
 
 
 @app.get("/api/health", tags=["meta"])

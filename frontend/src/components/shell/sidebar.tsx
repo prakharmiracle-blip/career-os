@@ -1,23 +1,25 @@
 "use client";
 
-import { ArrowRight, ChevronsLeft, Gem } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronsLeft, Gem } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Logo } from "@/components/logo";
 import { PremiumDialog } from "@/components/premium-dialog";
-import { GROW_NAV, MAIN_NAV, type NavItem } from "@/lib/nav";
+import { GROW_NAV, isExternal, MAIN_NAV, type NavItem } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const pathname = usePathname();
   const active = pathname === item.href || pathname.startsWith(item.href + "/");
   const Icon = item.icon;
+  const external = isExternal(item.href);
   return (
     <Link
       href={item.href}
       onClick={onNavigate}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer", "aria-label": `${item.label} (opens in a new tab)` } : {})}
       aria-current={active ? "page" : undefined}
       className={cn(
         "group flex items-center gap-3 rounded-xl px-3.5 py-[9px] text-sm font-medium transition-colors",
@@ -26,6 +28,7 @@ function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void 
     >
       <Icon className={cn("h-[18px] w-[18px] shrink-0", active ? "text-white" : "text-white/60 group-hover:text-white")} strokeWidth={1.8} />
       <span className="truncate">{item.label}</span>
+      {external && <ArrowUpRight className="ml-auto h-3.5 w-3.5 shrink-0 text-white/45" aria-hidden />}
       {item.soon && (
         <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-white/25" title="Coming soon" aria-label="Coming soon" />
       )}

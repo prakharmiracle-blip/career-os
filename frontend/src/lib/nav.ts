@@ -18,6 +18,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+/** Miracle's existing AI interview platform; Interview Prep sends users there. */
+export const INTERVIEW_APP_URL = "https://miracleinterviewai.netlify.app/";
+
+export const isExternal = (href: string) => /^https?:\/\//.test(href);
+
 export interface NavItem {
   href: string;
   label: string;
@@ -30,9 +35,9 @@ export const MAIN_NAV: NavItem[] = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/jobs", label: "Job Search", icon: Search },
   { href: "/applications", label: "Applications", icon: ClipboardList },
-  { href: "/resume-builder", label: "Resume Builder", icon: FileText, soon: { phase: 2, summary: "Templates, live preview, ATS score, keyword gaps and AI bullet rewrites, with PDF and DOCX export." } },
-  { href: "/coach", label: "AI Career Coach", icon: Bot, soon: { phase: 2, summary: "A chat coach that knows your profile and applications, with saved conversations, goals and a weekly plan." } },
-  { href: "/interview-prep", label: "Interview Prep", icon: Mic, soon: { phase: 3, summary: "Technical, HR and behavioural mock interviews by text or voice, with scored feedback and progress history." } },
+  { href: "/resume-builder", label: "Resume Builder", icon: FileText },
+  { href: "/coach", label: "AI Career Coach", icon: Bot },
+  { href: INTERVIEW_APP_URL, label: "Interview Prep", icon: Mic },
   { href: "/skills", label: "Skill Development", icon: Target, soon: { phase: 3, summary: "Your current and missing skills, an AI roadmap with checkable steps, courses and a weekly streak." } },
   { href: "/saved", label: "Saved Jobs", icon: Heart },
   { href: "/companies", label: "Company Insights", icon: Building2, soon: { phase: 3, summary: "Culture, salary ranges, interview process and hiring trends for each company." } },

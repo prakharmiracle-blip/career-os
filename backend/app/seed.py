@@ -242,14 +242,15 @@ def _seed_demo_user(db: Session, jobs: list[Job]) -> None:
     for job in picked[len(statuses):]:
         db.add(SavedJob(user_id=user.id, job_id=job.id))
 
-    today_6pm = now.replace(hour=12, minute=30, second=0, microsecond=0)  # 6:00 PM IST
+    # Always in the order the dashboard design shows: interview first, then review, then practice.
+    interview_at = (now + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
     db.add_all([
         Activity(user_id=user.id, kind="interview", title="Interview Preparation",
-                 subtitle="Frontend Developer – Google", starts_at=today_6pm + timedelta(days=0 if now < today_6pm else 1)),
+                 subtitle="Frontend Developer – Google", starts_at=interview_at),
         Activity(user_id=user.id, kind="resume_review", title="Resume Review",
-                 subtitle="Get AI suggestions", starts_at=(now + timedelta(days=1)).replace(hour=5, minute=30)),
+                 subtitle="Get AI suggestions", starts_at=interview_at + timedelta(days=1)),
         Activity(user_id=user.id, kind="practice", title="Aptitude Practice",
-                 subtitle="30 min session", starts_at=(now + timedelta(days=5)).replace(hour=4, minute=30)),
+                 subtitle="30 min session", starts_at=interview_at + timedelta(days=5)),
     ])
 
 

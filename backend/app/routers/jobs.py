@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user, get_current_user_optional
-from app.models import Application, Company, Job, SavedJob, User
+from app.models import Application, Company, IngestRun, Job, SavedJob, User
 from app.schemas import JobDetailOut, JobOut, JobPage, MatchOut, SortKey
-from app.services.job_sources import available_sources
+from app.services.job_sources import REGISTRY
 from app.services.matching import score_job
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
@@ -46,7 +46,7 @@ def search_jobs(
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
 ):
-    stmt = select(Job).join(Company)
+    stmt = select(Job).join(Company).where(Job.active.is_(True))
     if q:
         like = f"%{q.strip()}%"
         stmt = stmt.where(or_(Job.title.ilike(like), Company.name.ilike(like), cast(Job.skills, Text).ilike(like)))
@@ -57,14 +57,15 @@ def search_jobs(
     if work_mode:
         stmt = stmt.where(Job.work_mode.in_(work_mode))
     if exp is not None:
-        stmt = stmt.where(Job.exp_min <= exp, Job.exp_max >= exp)
+        # Postings that don't state experience stay in the results rather than vanish.
+        stmt = stmt.where(or_(Job.exp_min.is_(None), (Job.exp_min <= exp) & (Job.exp_max >= exp)))
     if min_salary is not None:
         stmt = stmt.where(Job.salary_max_lpa >= min_salary)
 
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
 
     if sort == "salary":
-        stmt = stmt.order_by(Job.salary_max_lpa.desc(), Job.id)
+        stmt = stmt.order_by(Job.salary_max_lpa.desc().nulls_last(), Job.id)
     else:
         stmt = stmt.order_by(Job.posted_at.desc(), Job.id)
 
@@ -83,7 +84,9 @@ def search_jobs(
 @router.get("/recommended", response_model=list[JobOut])
 def recommended(limit: int = Query(3, ge=1, le=20), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     applied = select(Application.job_id).where(Application.user_id == user.id)
-    jobs = list(db.scalars(select(Job).where(Job.id.not_in(applied)).order_by(Job.posted_at.desc()).limit(300)))
+    jobs = list(
+        db.scalars(select(Job).where(Job.active.is_(True), Job.id.not_in(applied)).order_by(Job.posted_at.desc()).limit(500))
+    )
     jobs.sort(key=lambda j: (score_job(user, j)["score"], j.posted_at), reverse=True)
     return _decorate(jobs[:limit], user, db)
 
@@ -100,8 +103,21 @@ def saved_jobs(db: Session = Depends(get_db), user: User = Depends(get_current_u
 
 
 @router.get("/sources")
-def sources():
-    return available_sources()
+def sources(db: Session = Depends(get_db)):
+    """Which job sources are switched on, and how the last refresh went."""
+    from app.services.ingest import last_success
+
+    out = []
+    for name, src in REGISTRY.items():
+        active = db.scalar(select(func.count(Job.id)).where(Job.source == name, Job.active.is_(True))) or 0
+        item = {"name": name, "configured": src.is_configured(), "active_jobs": active}
+        if name != "seed":
+            last = db.scalar(select(IngestRun).where(IngestRun.source == name).order_by(IngestRun.started_at.desc()).limit(1))
+            ok = last_success(db, name)
+            item["last_run"] = last and {"at": last.started_at, "ok": last.ok, "fetched": last.fetched, "error": last.error[:300]}
+            item["last_success_at"] = ok.started_at if ok else None
+        out.append(item)
+    return out
 
 
 @router.get("/{job_id}", response_model=JobDetailOut)
@@ -119,7 +135,12 @@ def similar(job_id: int, db: Session = Depends(get_db), user: User | None = Depe
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
     base = job.title.replace(" Intern", "")
     jobs = list(
-        db.scalars(select(Job).where(Job.id != job.id, Job.title.ilike(f"%{base}%")).order_by(Job.posted_at.desc()).limit(3))
+        db.scalars(
+            select(Job)
+            .where(Job.active.is_(True), Job.id != job.id, Job.title.ilike(f"%{base}%"))
+            .order_by(Job.posted_at.desc())
+            .limit(3)
+        )
     )
     return _decorate(jobs, user, db)
 

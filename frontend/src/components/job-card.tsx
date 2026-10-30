@@ -6,7 +6,7 @@ import Link from "next/link";
 import { CompanyLogo } from "@/components/company-logo";
 import type { Job } from "@/lib/api";
 import { useToggleSave } from "@/lib/queries";
-import { cn, salary, timeAgo } from "@/lib/utils";
+import { cn, placeLine, salary, timeAgo } from "@/lib/utils";
 
 export function SaveButton({ job, className }: { job: Job; className?: string }) {
   const toggle = useToggleSave();
@@ -23,6 +23,22 @@ export function SaveButton({ job, className }: { job: Job; className?: string })
     >
       <Bookmark className="h-[18px] w-[18px]" fill={job.saved ? "currentColor" : "none"} strokeWidth={1.8} />
     </button>
+  );
+}
+
+function SalaryPill({ job }: { job: Job }) {
+  const text = salary(job.salary_min_lpa, job.salary_max_lpa, job.salary_estimated);
+  return text ? <span className="pill">{text}</span> : <span className="pill bg-canvas text-ink-muted">Salary not disclosed</span>;
+}
+
+/** Adzuna's terms require crediting them wherever their jobs are shown. */
+export function AdzunaCredit({ className }: { className?: string }) {
+  return (
+    <p className={cn("text-xs text-ink-muted", className)}>
+      <a href="https://www.adzuna.in" target="_blank" rel="noopener noreferrer" className="font-semibold text-ink-soft hover:underline">
+        Jobs by Adzuna
+      </a>
+    </p>
   );
 }
 
@@ -44,15 +60,13 @@ export function JobCard({ job }: { job: Job }) {
             </Link>
           </h3>
           <p className="mt-0.5 truncate text-sm text-ink-soft">{job.company.name}</p>
-          <p className="mt-1 truncate text-sm text-ink-soft">
-            {job.location} <span aria-hidden>•</span> {job.work_mode}
-          </p>
+          <p className="mt-1 truncate text-sm text-ink-soft">{placeLine(job.location, job.work_mode)}</p>
         </div>
         <SaveButton job={job} className="relative z-10 -mr-1 -mt-1" />
       </div>
       <div className="mt-4 flex flex-wrap gap-2 pl-[58px]">
-        <span className="pill">{salary(job.salary_min_lpa, job.salary_max_lpa)}</span>
-        <span className="pill">{job.job_type}</span>
+        <SalaryPill job={job} />
+        {job.job_type && <span className="pill">{job.job_type}</span>}
         {job.match && <MatchBadge score={job.match.score} />}
       </div>
       <p className="mt-3 pl-[58px] text-sm text-ink-muted">{timeAgo(job.posted_at)}</p>
@@ -76,14 +90,14 @@ export function JobRow({ job }: { job: Job }) {
             <p className="text-sm text-ink-soft">{job.company.name}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="pill">{salary(job.salary_min_lpa, job.salary_max_lpa)}</span>
-            <span className="pill">{job.job_type}</span>
+            <SalaryPill job={job} />
+            {job.job_type && <span className="pill">{job.job_type}</span>}
           </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-ink-soft">
           <span>
             <MapPin className="mr-1 inline h-3.5 w-3.5 -translate-y-px" aria-hidden />
-            {job.location} <span aria-hidden>•</span> {job.work_mode}
+            {placeLine(job.location, job.work_mode)}
           </span>
           <span className="text-ink-muted">{timeAgo(job.posted_at)}</span>
           {job.applied && <span className="rounded-full bg-status-green px-2 py-0.5 text-xs font-semibold text-status-greenInk">Applied</span>}

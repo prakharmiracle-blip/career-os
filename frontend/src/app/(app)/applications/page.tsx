@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { CoachPrompt } from "@/components/coach-prompt";
 import { CompanyLogo } from "@/components/company-logo";
 import { STATUS_LABEL, StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -228,6 +229,15 @@ function Tracker() {
           </div>
         )}
       </div>
+      <CoachPrompt
+        chips={[
+          "How can I improve my resume?",
+          "Which skills should I learn for my target role?",
+          ...(data.find((a) => a.status === "interview_scheduled")
+            ? [`Give me interview tips for ${data.find((a) => a.status === "interview_scheduled")!.job.company.name}`]
+            : ["Why might my applications not be getting replies?"]),
+        ]}
+      />
       <NotesDialog app={notesFor} onClose={() => setNotesFor(null)} />
     </div>
   );

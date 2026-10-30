@@ -29,13 +29,22 @@ export function friendlyWhen(iso: string): string {
   return `${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${time}`;
 }
 
-export function salary(min: number, max: number) {
-  return `₹ ${min}–${max} LPA`;
+export function salary(min: number | null, max: number | null, estimated = false) {
+  if (min == null || max == null) return null;
+  const range = min === max ? `₹ ${min} LPA` : `₹ ${min}–${max} LPA`;
+  return estimated ? `${range} (est.)` : range;
 }
 
-export function experience(min: number, max: number) {
+export function experience(min: number | null, max: number | null) {
+  if (min == null) return "Not specified";
   if (max === 0) return "Fresher";
+  if (max == null || max === min) return `${min}+ years`;
   return `${min}–${max} years`;
+}
+
+/** "Bengaluru, India • Hybrid", leaving out parts the posting doesn't state. */
+export function placeLine(location: string, mode: string) {
+  return [location, mode].filter(Boolean).join(" • ");
 }
 
 export function initials(name: string) {

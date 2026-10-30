@@ -29,7 +29,9 @@ def score_job(user: User, job: Job) -> dict:
         reasons.append(f"You have {len(matched)} of {len(job_skills)} listed skills")
 
     user_exp = ROLE_EXPERIENCE.get(user.role_type, 0)
-    if job.exp_min <= user_exp <= job.exp_max:
+    if job.exp_min is None:
+        exp_pts = 10  # posting doesn't say: half credit, no claim either way
+    elif job.exp_min <= user_exp <= (job.exp_max if job.exp_max is not None else job.exp_min):
         exp_pts = 20
         reasons.append("Experience level fits the role")
     elif user_exp < job.exp_min:

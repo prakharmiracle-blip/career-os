@@ -36,15 +36,31 @@ class Settings(BaseSettings):
     # trusts X-Forwarded-For for the client IP. Leave empty in local development.
     proxy_secret: str = ""
 
+    # Email (Resend) for password-reset codes. Empty = reset by email is off.
+    resend_api_key: str = ""
+    email_from: str = "CareerOS <no-reply@careeros.app>"
+
+    # Google sign-in. Redirect URI to register in Google Cloud:
+    #   {FRONTEND_ORIGIN}/api/auth/google/callback
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
     # Rate limits (slowapi syntax)
     auth_rate_limit: str = "10/minute"
 
     # Optional external job sources (Phase 2+). Empty = offline seed data only.
     adzuna_app_id: str = ""
     adzuna_app_key: str = ""
+    # Background daily refresh of real jobs. Tests turn it off.
+    job_refresh_enabled: bool = True
 
     # AI (Phase 2+)
     anthropic_api_key: str = ""
+    # Fast, cheap model for extraction (resume analysis); stronger model for the coach chat.
+    anthropic_model_fast: str = "claude-haiku-5-5"
+    anthropic_model_chat: str = "claude-sonnet-5-5"
+    # Per-user cap on AI calls per day (UTC), to keep costs predictable.
+    ai_daily_limit: int = 40
 
 
 @lru_cache

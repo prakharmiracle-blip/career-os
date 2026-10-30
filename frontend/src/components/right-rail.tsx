@@ -2,6 +2,7 @@
 
 import { ArrowRight, CalendarCheck2, FileText, Target } from "lucide-react";
 import Link from "next/link";
+import { INTERVIEW_APP_URL, isExternal } from "@/lib/nav";
 import { useState } from "react";
 
 import { useActivities, useOverview } from "@/lib/queries";
@@ -54,7 +55,7 @@ export function ApplicationOverview() {
 const KIND = {
   interview: { icon: CalendarCheck2, bg: "bg-tile-blue", ink: "text-tile-blueInk", href: "/applications?tab=interviews" },
   resume_review: { icon: FileText, bg: "bg-tile-lav", ink: "text-tile-lavInk", href: "/resume-builder" },
-  practice: { icon: Target, bg: "bg-status-red", ink: "text-status-redInk", href: "/interview-prep" },
+  practice: { icon: Target, bg: "bg-status-red", ink: "text-status-redInk", href: INTERVIEW_APP_URL },
 } as const;
 
 export function UpcomingActivities() {
@@ -86,7 +87,7 @@ export function UpcomingActivities() {
             const Icon = k.icon;
             return (
               <li key={a.id}>
-                <Link href={k.href} className="flex gap-3.5 rounded-xl p-2 -mx-2 hover:bg-canvas">
+                <Link href={k.href} {...(isExternal(k.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="flex gap-3.5 rounded-xl p-2 -mx-2 hover:bg-canvas">
                   <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", k.bg)}>
                     <Icon className={cn("h-5 w-5", k.ink)} aria-hidden />
                   </span>

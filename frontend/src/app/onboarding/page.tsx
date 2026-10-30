@@ -8,12 +8,18 @@ import { Logo } from "@/components/logo";
 import { ResumeUpload } from "@/components/resume-upload";
 import { SkillsInput } from "@/components/skills-input";
 import { Button } from "@/components/ui/button";
+import type { RoleType } from "@/lib/api";
 import { useMe, useUpdateProfile } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const ROLE_IDEAS = ["Software Engineer", "AI Engineer", "Data Analyst", "Data Scientist", "Frontend Developer", "Product Manager", "UI/UX Designer", "DevOps Engineer"];
 const CITY_IDEAS = ["Bengaluru, India", "Hyderabad, India", "Pune, India", "Gurugram, India", "Noida, India", "Mumbai, India", "Remote"];
 const STEPS = ["Target role", "Skills", "Resume"];
+const STAGES: { v: RoleType; l: string; d: string }[] = [
+  { v: "student", l: "Student", d: "Still studying" },
+  { v: "fresher", l: "Fresher", d: "0–1 years" },
+  { v: "experienced", l: "Experienced", d: "1+ years" },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -24,6 +30,7 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [resumeDone, setResumeDone] = useState(false);
+  const [stage, setStage] = useState<RoleType | null>(null);
 
   useEffect(() => {
     if (isError) router.replace("/login");
@@ -31,6 +38,7 @@ export default function OnboardingPage() {
       setRole((r) => r || user.target_role || "");
       setLocation((l) => l || user.location || "");
       setSkills((s) => (s.length ? s : user.skills));
+      setStage((v) => v ?? user.role_type);
     }
   }, [user, isError, router]);
 
@@ -48,7 +56,10 @@ export default function OnboardingPage() {
   // Save role, location and skills before the resume step, so the upload's skill merge
   // and job matching work from the profile the user just built.
   const toResume = () =>
-    update.mutate({ target_role: role.trim(), location: location.trim(), skills }, { onSuccess: () => setStep(2) });
+    update.mutate(
+      { target_role: role.trim(), location: location.trim(), skills, ...(stage ? { role_type: stage } : {}) },
+      { onSuccess: () => setStep(2) },
+    );
 
   const finish = () => update.mutate({ onboarded: true }, { onSuccess: () => router.replace("/home") });
 
@@ -78,6 +89,23 @@ export default function OnboardingPage() {
             >
               <h1 className="text-xl font-bold text-ink">Hi {user.name.split(" ")[0]}, what role are you aiming for?</h1>
               <p className="mt-1.5 text-sm text-ink-soft">We use this to rank jobs and explain how well you match.</p>
+              <fieldset className="mt-6">
+                <legend className="label">Where are you in your career?</legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {STAGES.map((st) => (
+                    <button
+                      key={st.v}
+                      type="button"
+                      onClick={() => setStage(st.v)}
+                      aria-pressed={stage === st.v}
+                      className={cn("rounded-xl border px-2 py-2.5 text-center", stage === st.v ? "border-violet bg-violet-soft" : "border-line bg-white hover:border-violet/40")}
+                    >
+                      <span className="block text-sm font-semibold text-ink">{st.l}</span>
+                      <span className="block text-[11px] text-ink-muted">{st.d}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
               <label htmlFor="role" className="label mt-6">Target role</label>
               <input id="role" value={role} onChange={(e) => setRole(e.target.value)} className="input" placeholder="e.g. AI Engineer" required />
               <div className="mt-3 flex flex-wrap gap-2">
