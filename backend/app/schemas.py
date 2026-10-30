@@ -163,3 +163,13 @@ class WaitlistOut(BaseModel):
     ok: bool
     already_joined: bool
     plan: str
+
+
+# ---------- Resume ----------
+class ResumeOut(BaseModel):
+    filename: str
+    detected_skills: list[str]
+    added_skills: list[str]
+    word_count: int
+    uploaded_at: datetime
+    user: UserOut

@@ -7,6 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { PremiumDialog } from "@/components/premium-dialog";
+import { ResumeUpload } from "@/components/resume-upload";
 import { SkillsInput } from "@/components/skills-input";
 import { Button } from "@/components/ui/button";
 import { useMe, useUpdateProfile } from "@/lib/queries";
@@ -84,6 +85,14 @@ export default function SettingsPage() {
         </div>
       </form>
 
+      <section id="resume" className="card p-6" aria-labelledby="resume-h">
+        <h2 id="resume-h" className="text-base font-bold text-ink">
+          Resume
+        </h2>
+        <p className="mb-4 mt-1 text-sm text-ink-soft">Upload a new version any time. New skills it mentions are added to your profile.</p>
+        <ResumeUpload compact />
+      </section>
+
       <section id="plan" className="card p-6" aria-labelledby="plan-h">
         <h2 id="plan-h" className="text-base font-bold text-ink">
           Plan
@@ -103,7 +112,7 @@ export default function SettingsPage() {
         </h2>
         <p className="mt-1 text-sm text-ink-muted">Signed in as {user.email}</p>
         <ul className="mt-4 divide-y divide-line text-sm">
-          {["Resume versions", "Notification preferences", "Privacy controls", "Delete account"].map((t) => (
+          {["Resume version history", "Notification preferences", "Privacy controls", "Delete account"].map((t) => (
             <li key={t} className="flex items-center justify-between py-3">
               <span className="text-ink">{t}</span>
               <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-ink-muted">Coming soon</span>

@@ -22,7 +22,7 @@ def join_waitlist(
     """No payments: Premium/Prime upgrades collect waitlist interest only."""
     email = (body.email or (user.email if user else "")).lower()
     if not email:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Email is required")
+        raise HTTPException(422, "Email is required")
     plan = Plan(body.plan)
     existing = db.scalar(select(WaitlistEntry).where(WaitlistEntry.email == email, WaitlistEntry.plan == plan))
     if existing:

@@ -42,7 +42,7 @@ The web app proxies `/api/*` to the API (see `next.config.mjs`), so auth cookies
 ### Tests and checks
 
 ```bash
-cd backend && pytest -q                       # 21 API tests against careeros_test
+cd backend && pip install -r requirements-dev.txt && pytest -q   # 31 API tests against careeros_test
 cd frontend && npm run typecheck && npm run lint && npm run build
 ```
 

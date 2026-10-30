@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/logo";
+import { ResumeUpload } from "@/components/resume-upload";
 import { SkillsInput } from "@/components/skills-input";
 import { Button } from "@/components/ui/button";
 import { useMe, useUpdateProfile } from "@/lib/queries";
@@ -12,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 const ROLE_IDEAS = ["Software Engineer", "AI Engineer", "Data Analyst", "Data Scientist", "Frontend Developer", "Product Manager", "UI/UX Designer", "DevOps Engineer"];
 const CITY_IDEAS = ["Bengaluru, India", "Hyderabad, India", "Pune, India", "Gurugram, India", "Noida, India", "Mumbai, India", "Remote"];
-const STEPS = ["Target role", "Skills"];
+const STEPS = ["Target role", "Skills", "Resume"];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function OnboardingPage() {
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
+  const [resumeDone, setResumeDone] = useState(false);
 
   useEffect(() => {
     if (isError) router.replace("/login");
@@ -39,15 +41,16 @@ export default function OnboardingPage() {
       </div>
     );
 
-  // Simple completeness: name + email given at signup, plus the 3 onboarding fields.
-  const filled = 2 + (role.trim() ? 1 : 0) + (location.trim() ? 1 : 0) + (skills.length >= 3 ? 1 : 0);
-  const pct = Math.round((filled / 5) * 100);
+  // Completeness: name + email from signup, then role, location, 3+ skills and a resume.
+  const filled = 2 + (role.trim() ? 1 : 0) + (location.trim() ? 1 : 0) + (skills.length >= 3 ? 1 : 0) + (resumeDone ? 1 : 0);
+  const pct = Math.round((filled / 6) * 100);
 
-  const finish = () =>
-    update.mutate(
-      { target_role: role.trim(), location: location.trim(), skills, onboarded: true },
-      { onSuccess: () => router.replace("/home") },
-    );
+  // Save role, location and skills before the resume step, so the upload's skill merge
+  // and job matching work from the profile the user just built.
+  const toResume = () =>
+    update.mutate({ target_role: role.trim(), location: location.trim(), skills }, { onSuccess: () => setStep(2) });
+
+  const finish = () => update.mutate({ onboarded: true }, { onSuccess: () => router.replace("/home") });
 
   return (
     <div className="min-h-screen px-4 py-8 sm:py-12">
@@ -97,16 +100,13 @@ export default function OnboardingPage() {
                 Continue
               </Button>
             </form>
-          ) : (
+          ) : step === 1 ? (
             <div>
               <button onClick={() => setStep(0)} className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-ink-soft hover:text-ink">
                 <ArrowLeft className="h-4 w-4" /> Back
               </button>
               <h1 className="text-xl font-bold text-ink">Add your skills</h1>
               <p className="mt-1.5 text-sm text-ink-soft">Add at least three. Matching compares these with each job&apos;s requirements.</p>
-              <p className="mt-3 rounded-lg bg-canvas px-3 py-2 text-xs text-ink-soft">
-                Resume upload with AI profile prefill is coming in the next release.
-              </p>
               <div className="mt-5">
                 <SkillsInput value={skills} onChange={setSkills} />
               </div>
@@ -115,9 +115,45 @@ export default function OnboardingPage() {
                   {update.error.message}
                 </p>
               )}
-              <Button className="mt-8 w-full" size="lg" disabled={skills.length < 3} loading={update.isPending} onClick={finish}>
-                {skills.length < 3 ? `Add ${3 - skills.length} more skill${3 - skills.length === 1 ? "" : "s"}` : "Finish and see my jobs"}
+              <Button className="mt-8 w-full" size="lg" disabled={skills.length < 3} loading={update.isPending} onClick={toResume}>
+                {skills.length < 3 ? `Add ${3 - skills.length} more skill${3 - skills.length === 1 ? "" : "s"}` : "Continue"}
               </Button>
+            </div>
+          ) : (
+            <div>
+              <button onClick={() => setStep(1)} className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-ink-soft hover:text-ink">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+              <h1 className="text-xl font-bold text-ink">Upload your resume</h1>
+              <p className="mt-1.5 text-sm text-ink-soft">
+                We&apos;ll read it, add any skills you missed, and find the jobs that fit you best.
+              </p>
+              <div className="mt-6">
+                <ResumeUpload
+                  onComplete={(r) => {
+                    setResumeDone(true);
+                    setSkills(r.user.skills);
+                  }}
+                />
+              </div>
+              {update.isError && (
+                <p className="mt-4 text-sm text-status-redInk" role="alert">
+                  {update.error.message}
+                </p>
+              )}
+              {resumeDone ? (
+                <Button className="mt-8 w-full" size="lg" loading={update.isPending} onClick={finish}>
+                  See my jobs
+                </Button>
+              ) : (
+                <button
+                  onClick={finish}
+                  disabled={update.isPending}
+                  className="mt-6 w-full text-center text-sm font-medium text-ink-soft hover:text-ink disabled:opacity-60"
+                >
+                  Skip for now. You can upload it later in Profile &amp; Settings.
+                </button>
+              )}
             </div>
           )}
         </div>

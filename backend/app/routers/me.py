@@ -1,13 +1,15 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
-from app.models import Activity, Application, ApplicationStatus, SavedJob, User
-from app.schemas import ActivityOut, OverviewOut, ProfileUpdate, UserOut
+from app.models import Activity, Application, ApplicationStatus, Resume, SavedJob, User, utcnow
+from app.ratelimit import limiter
+from app.schemas import ActivityOut, OverviewOut, ProfileUpdate, ResumeOut, UserOut
+from app.services.resume import MAX_BYTES, ResumeError, detect_skills, extract_text
 
 router = APIRouter(prefix="/api/me", tags=["me"])
 
@@ -53,3 +55,44 @@ def update_profile(body: ProfileUpdate, db: Session = Depends(get_db), user: Use
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post("/resume", response_model=ResumeOut)
+@limiter.limit("10/minute")
+async def upload_resume(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Read a PDF/DOCX resume, detect skills, and add new ones to the profile."""
+    data = await file.read(MAX_BYTES + 1)
+    try:
+        text = extract_text(file.filename or "", data)
+    except ResumeError as e:
+        raise HTTPException(422, str(e)) from e
+
+    detected = detect_skills(text)
+    have = {s.lower() for s in user.skills or []}
+    added = [s for s in detected if s.lower() not in have]
+    if added:
+        user.skills = [*(user.skills or []), *added][:50]
+
+    resume = db.scalar(select(Resume).where(Resume.user_id == user.id))
+    name = (file.filename or "resume")[:255]
+    if resume:
+        resume.filename, resume.text, resume.detected_skills, resume.uploaded_at = name, text, detected, utcnow()
+    else:
+        resume = Resume(user_id=user.id, filename=name, text=text, detected_skills=detected)
+        db.add(resume)
+    db.commit()
+    db.refresh(user)
+    db.refresh(resume)
+    return ResumeOut(
+        filename=resume.filename,
+        detected_skills=detected,
+        added_skills=added,
+        word_count=len(text.split()),
+        uploaded_at=resume.uploaded_at,
+        user=UserOut.model_validate(user),
+    )
